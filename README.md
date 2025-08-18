@@ -29,6 +29,15 @@ python agent.py --list
 
 # Run with timeout
 python agent.py "Build feature X" --timeout 3600
+
+# Run from anywhere - workspaces are created relative to agent.py location
+cd /anywhere
+python /path/to/full-agent/agent.py "Build todo app"
+
+# Or make it executable and add to PATH
+chmod +x /path/to/full-agent/agent.py
+export PATH=$PATH:/path/to/full-agent
+agent.py "Build something"
 ```
 
 ## How It Works
@@ -41,23 +50,33 @@ python agent.py "Build feature X" --timeout 3600
 
 ## Workspace Organization
 
-Each task runs in its own workspace directory:
+By default, workspaces are created in `~/full-agent-workspace/` to keep the agent repository clean:
 
 ```
-workspace/
-├── calculator/             # Task workspace
-│   ├── .memory/           # Task-specific memory
+~/full-agent-workspace/        # Default location (not in repo!)
+├── calculator/                 # Task workspace
+│   ├── .memory/               # Task-specific memory
 │   │   ├── core/
 │   │   ├── learned/
 │   │   ├── current/
 │   │   └── handoffs/
-│   ├── src/               # Implementation
+│   ├── src/                   # Implementation
 │   └── README.md
-├── twitter-clone/         # Another task
+├── twitter-clone/             # Another task
 │   ├── .memory/
 │   ├── frontend/
 │   ├── backend/
 │   └── README.md
+```
+
+You can customize the workspace location:
+```bash
+# Use environment variable
+export FULL_AGENT_WORKSPACE=/path/to/my/workspaces
+python agent.py "Build app"
+
+# Or specify directly
+python agent.py "Build app" --workspace /path/to/specific/workspace
 ```
 
 ## Memory System

@@ -25,9 +25,19 @@ def ensure_memory_structure(workspace_dir):
 
 def load_objective(objective_path):
     """Load objective from file or string"""
+    # First check if it's a file relative to current directory
     if os.path.isfile(objective_path):
         with open(objective_path) as f:
             return f.read().strip()
+    
+    # Check if it's a file relative to agent root
+    agent_root = get_agent_root()
+    agent_relative_path = agent_root / objective_path
+    if agent_relative_path.is_file():
+        with open(agent_relative_path) as f:
+            return f.read().strip()
+    
+    # Otherwise treat as literal objective string
     return objective_path
 
 def create_master_prompt(objective, workspace_dir, resume=False):
@@ -110,14 +120,32 @@ def sanitize_name(name):
     safe_name = re.sub(r'[^a-zA-Z0-9-_]', '_', name[:50])
     return safe_name.lower().strip('_')
 
+def get_default_workspace_base():
+    """Get the default workspace base directory"""
+    # Check for environment variable first
+    if "FULL_AGENT_WORKSPACE" in os.environ:
+        return Path(os.environ["FULL_AGENT_WORKSPACE"]).absolute()
+    
+    # Use ~/full-agent-workspace as default to avoid polluting the repo
+    return Path.home() / "full-agent-workspace"
+
+def get_agent_root():
+    """Get the root directory where agent.py lives"""
+    return Path(__file__).parent.absolute()
+
 def run_agent(objective, workspace=None, resume=False, timeout=None):
     """Launch Claude Code with the objective"""
     # Determine workspace directory
     if workspace:
-        workspace_dir = Path(workspace).absolute()
+        # If absolute path given, use it; otherwise relative to current directory
+        workspace_path = Path(workspace)
+        if workspace_path.is_absolute():
+            workspace_dir = workspace_path
+        else:
+            workspace_dir = Path.cwd() / workspace
     elif resume:
         # Find existing workspace with saved state
-        workspace_base = Path("workspace")
+        workspace_base = get_default_workspace_base()
         if workspace_base.exists():
             for dir in workspace_base.iterdir():
                 if (dir / ".memory" / "core" / "objective.md").exists():
@@ -131,7 +159,7 @@ def run_agent(objective, workspace=None, resume=False, timeout=None):
             return 1
     else:
         # Create new workspace based on objective
-        workspace_base = Path("workspace")
+        workspace_base = get_default_workspace_base()
         workspace_base.mkdir(exist_ok=True)
         
         # Generate workspace name from objective
@@ -200,7 +228,7 @@ def main():
     
     # List workspaces if requested
     if args.list:
-        workspace_base = Path("workspace")
+        workspace_base = get_default_workspace_base()
         if workspace_base.exists():
             print("📂 Existing workspaces:")
             for dir in sorted(workspace_base.iterdir()):
