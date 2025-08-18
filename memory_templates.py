@@ -3,6 +3,8 @@
 Memory template helpers for the agent
 """
 
+from datetime import datetime
+
 def create_objective_template(objective):
     """Create initial objective memory"""
     return f"""# Project Objective
