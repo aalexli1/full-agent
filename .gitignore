@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Agent state
+.agent-state/
+*.log
+
+# Temporary files
+*.tmp
+temp/
+
+# Environment
+.env
+.env.local
+
+# But keep memory structure
+!.memory/.gitkeep
+!.memory/**/.gitkeep

@@ -1,0 +1,5 @@
+# Full Agent has minimal Python dependencies
+# The heavy lifting is done by Claude Code CLI
+
+# Optional: For enhanced features
+python-dotenv>=0.19.0  # For environment variables
