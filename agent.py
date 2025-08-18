@@ -10,14 +10,15 @@ import json
 from pathlib import Path
 from datetime import datetime
 import argparse
+import re
 
-def ensure_memory_structure():
-    """Ensure memory directory structure exists"""
+def ensure_memory_structure(workspace_dir):
+    """Ensure memory directory structure exists in workspace"""
     memory_dirs = [
-        ".memory/core",
-        ".memory/learned", 
-        ".memory/current",
-        ".memory/handoffs"
+        f"{workspace_dir}/.memory/core",
+        f"{workspace_dir}/.memory/learned", 
+        f"{workspace_dir}/.memory/current",
+        f"{workspace_dir}/.memory/handoffs"
     ]
     for dir_path in memory_dirs:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
@@ -29,15 +30,17 @@ def load_objective(objective_path):
             return f.read().strip()
     return objective_path
 
-def create_master_prompt(objective, resume=False):
+def create_master_prompt(objective, workspace_dir, resume=False):
     """Generate the master prompt for Claude"""
     if resume:
-        resume_context = """
-You are resuming work on an objective. First, read the memory files to understand:
-- .memory/core/objective.md - The main goal
-- .memory/current/progress.md - What's been done
-- .memory/current/working-on.md - What was in progress
-- .memory/current/blocked.md - Any blockers
+        resume_context = f"""
+You are resuming work on an objective. Your workspace is: {workspace_dir}
+
+First, read the memory files to understand:
+- {workspace_dir}/.memory/core/objective.md - The main goal
+- {workspace_dir}/.memory/current/progress.md - What's been done
+- {workspace_dir}/.memory/current/working-on.md - What was in progress
+- {workspace_dir}/.memory/current/blocked.md - Any blockers
 
 Then continue working toward completion.
 """
@@ -46,7 +49,10 @@ Then continue working toward completion.
 You are starting fresh on this objective:
 {objective}
 
-First, write this objective to .memory/core/objective.md for future reference.
+Your workspace directory is: {workspace_dir}
+All your work should be done within this directory.
+
+First, write this objective to {workspace_dir}/.memory/core/objective.md for future reference.
 """
     
     return f"""You are an autonomous agent with a specific objective to complete.
@@ -62,55 +68,96 @@ First, write this objective to .memory/core/objective.md for future reference.
 
 ## Memory System
 
-The .memory/ directory is your persistent brain:
-- .memory/core/ - Unchanging facts (objective, architecture)
-- .memory/learned/ - Patterns and decisions you discover
-- .memory/current/ - Your active state and progress
-- .memory/handoffs/ - Communication with sub-agents
+The {workspace_dir}/.memory/ directory is your persistent brain:
+- {workspace_dir}/.memory/core/ - Unchanging facts (objective, architecture)
+- {workspace_dir}/.memory/learned/ - Patterns and decisions you discover
+- {workspace_dir}/.memory/current/ - Your active state and progress
+- {workspace_dir}/.memory/handoffs/ - Communication with sub-agents
 
 ALWAYS update these files as you work so you can resume if interrupted.
 
 ## Working with Sub-Agents
 
 When you need specialist help:
-1. Write context to .memory/handoffs/to-[specialist].md
-2. Spawn with: Task(prompt="Read .memory/handoffs/to-[specialist].md and execute")
-3. Sub-agent will write results to .memory/handoffs/from-[specialist].md
+1. Write context to {workspace_dir}/.memory/handoffs/to-[specialist].md
+2. Spawn with: Task(prompt="Work in {workspace_dir}. Read {workspace_dir}/.memory/handoffs/to-[specialist].md and execute")
+3. Sub-agent will write results to {workspace_dir}/.memory/handoffs/from-[specialist].md
 4. Read results and continue
 
 ## Progress Tracking
 
 Regularly update:
-- .memory/current/progress.md - Overall progress percentage and summary
-- .memory/current/working-on.md - Current focus
-- .memory/learned/patterns.md - Discovered patterns
-- .memory/learned/decisions.md - Key decisions and rationale
+- {workspace_dir}/.memory/current/progress.md - Overall progress percentage and summary
+- {workspace_dir}/.memory/current/working-on.md - Current focus
+- {workspace_dir}/.memory/learned/patterns.md - Discovered patterns
+- {workspace_dir}/.memory/learned/decisions.md - Key decisions and rationale
 
 ## Completion
 
 Continue working until the objective is fully complete.
-When done, write a final summary to .memory/current/complete.md
+When done, write a final summary to {workspace_dir}/.memory/current/complete.md
 
 If truly blocked:
-1. Document the blocker in .memory/current/blocked.md
+1. Document the blocker in {workspace_dir}/.memory/current/blocked.md
 2. Create a GitHub issue if it requires user intervention
 3. Work on other aspects if possible
 
 Remember: You are autonomous. Make decisions, implement solutions, and complete the objective."""
 
-def run_agent(objective, resume=False, timeout=None):
+def sanitize_name(name):
+    """Convert objective to safe directory name"""
+    # Take first 50 chars, remove special characters
+    safe_name = re.sub(r'[^a-zA-Z0-9-_]', '_', name[:50])
+    return safe_name.lower().strip('_')
+
+def run_agent(objective, workspace=None, resume=False, timeout=None):
     """Launch Claude Code with the objective"""
-    ensure_memory_structure()
+    # Determine workspace directory
+    if workspace:
+        workspace_dir = Path(workspace).absolute()
+    elif resume:
+        # Find existing workspace with saved state
+        workspace_base = Path("workspace")
+        if workspace_base.exists():
+            for dir in workspace_base.iterdir():
+                if (dir / ".memory" / "core" / "objective.md").exists():
+                    workspace_dir = dir.absolute()
+                    break
+            else:
+                print("❌ No saved state found. Specify workspace with --workspace")
+                return 1
+        else:
+            print("❌ No workspace directory found")
+            return 1
+    else:
+        # Create new workspace based on objective
+        workspace_base = Path("workspace")
+        workspace_base.mkdir(exist_ok=True)
+        
+        # Generate workspace name from objective
+        workspace_name = sanitize_name(objective)
+        workspace_dir = workspace_base / workspace_name
+        
+        # Add timestamp if directory exists
+        if workspace_dir.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            workspace_dir = workspace_base / f"{workspace_name}_{timestamp}"
+        
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Ensure memory structure exists
+    ensure_memory_structure(workspace_dir)
     
     # Generate master prompt
-    prompt = create_master_prompt(objective, resume)
+    prompt = create_master_prompt(objective, str(workspace_dir), resume)
     
-    # Build command
+    # Build command - run in workspace directory
     cmd = ["claude-code", "--no-interactive", prompt]
     
     print(f"🚀 Launching autonomous agent...")
     print(f"📍 Objective: {objective[:100]}..." if len(objective) > 100 else f"📍 Objective: {objective}")
-    print(f"💾 Memory at: .memory/")
+    print(f"📂 Workspace: {workspace_dir}")
+    print(f"💾 Memory at: {workspace_dir}/.memory/")
     print("-" * 50)
     
     try:
@@ -121,19 +168,20 @@ def run_agent(objective, resume=False, timeout=None):
             print("\n✅ Agent completed successfully")
             
             # Check if complete
-            if Path(".memory/current/complete.md").exists():
+            complete_path = workspace_dir / ".memory" / "current" / "complete.md"
+            if complete_path.exists():
                 print("📄 Reading completion report...")
-                with open(".memory/current/complete.md") as f:
+                with open(complete_path) as f:
                     print(f.read())
         else:
             print(f"\n⚠️ Agent exited with code {result.returncode}")
             
     except subprocess.TimeoutExpired:
         print(f"\n⏱️ Agent timeout after {timeout} seconds")
-        print("💾 State saved to .memory/ - use --resume to continue")
+        print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
     except KeyboardInterrupt:
         print("\n⚠️ Agent interrupted")
-        print("💾 State saved to .memory/ - use --resume to continue")
+        print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         return 1
@@ -143,15 +191,32 @@ def run_agent(objective, resume=False, timeout=None):
 def main():
     parser = argparse.ArgumentParser(description="Launch an autonomous Claude agent")
     parser.add_argument("objective", nargs="?", help="Objective to complete (string or file path)")
+    parser.add_argument("--workspace", "-w", help="Workspace directory for this task")
     parser.add_argument("--resume", action="store_true", help="Resume from saved state")
     parser.add_argument("--timeout", type=int, help="Timeout in seconds")
+    parser.add_argument("--list", action="store_true", help="List existing workspaces")
     
     args = parser.parse_args()
     
+    # List workspaces if requested
+    if args.list:
+        workspace_base = Path("workspace")
+        if workspace_base.exists():
+            print("📂 Existing workspaces:")
+            for dir in sorted(workspace_base.iterdir()):
+                if dir.is_dir():
+                    obj_file = dir / ".memory" / "core" / "objective.md"
+                    if obj_file.exists():
+                        with open(obj_file) as f:
+                            obj = f.readline().strip()[:50]
+                        print(f"  • {dir.name}: {obj}...")
+                    else:
+                        print(f"  • {dir.name}: (no objective)")
+        else:
+            print("No workspaces found")
+        return 0
+    
     if args.resume:
-        if not Path(".memory/core/objective.md").exists():
-            print("❌ No saved state found. Start fresh with an objective.")
-            return 1
         objective = "Resuming from saved state"
     elif args.objective:
         objective = load_objective(args.objective)
@@ -160,7 +225,7 @@ def main():
         parser.print_help()
         return 1
     
-    return run_agent(objective, args.resume, args.timeout)
+    return run_agent(objective, args.workspace, args.resume, args.timeout)
 
 if __name__ == "__main__":
     sys.exit(main())

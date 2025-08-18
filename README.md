@@ -9,14 +9,23 @@ Full Agent launches Claude Code with a single objective and lets it run autonomo
 ## Quick Start
 
 ```bash
-# Run with an objective
+# Run with an objective (auto-creates workspace)
 python agent.py "Build a calculator web app"
 
 # Run with an objective file
 python agent.py examples/calculator.md
 
+# Specify custom workspace
+python agent.py "Build app" --workspace ./my-project
+
 # Resume from saved state
 python agent.py --resume
+
+# Resume specific workspace
+python agent.py --resume --workspace workspace/calculator
+
+# List existing workspaces
+python agent.py --list
 
 # Run with timeout
 python agent.py "Build feature X" --timeout 3600
@@ -30,9 +39,30 @@ python agent.py "Build feature X" --timeout 3600
 4. **Specialist Delegation**: Spawns sub-agents when needed
 5. **Completion**: Continues until objective is complete
 
+## Workspace Organization
+
+Each task runs in its own workspace directory:
+
+```
+workspace/
+├── calculator/             # Task workspace
+│   ├── .memory/           # Task-specific memory
+│   │   ├── core/
+│   │   ├── learned/
+│   │   ├── current/
+│   │   └── handoffs/
+│   ├── src/               # Implementation
+│   └── README.md
+├── twitter-clone/         # Another task
+│   ├── .memory/
+│   ├── frontend/
+│   ├── backend/
+│   └── README.md
+```
+
 ## Memory System
 
-The `.memory/` directory serves as the agent's persistent brain:
+Each workspace has its own `.memory/` directory:
 
 ```
 .memory/
