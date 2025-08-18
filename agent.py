@@ -180,8 +180,9 @@ def run_agent(objective, workspace=None, resume=False, timeout=None):
     prompt = create_master_prompt(objective, str(workspace_dir), resume)
     
     # Build command - run in workspace directory
-    # Need --allow-dangerous-commands for git operations and other system commands
-    cmd = ["claude-code", "--no-interactive", "--allow-dangerous-commands", prompt]
+    # --print for non-interactive mode
+    # --dangerously-skip-permissions to allow all operations without prompting
+    cmd = ["claude", "--print", "--dangerously-skip-permissions", prompt]
     
     print(f"🚀 Launching autonomous agent...")
     print(f"📍 Objective: {objective[:100]}..." if len(objective) > 100 else f"📍 Objective: {objective}")

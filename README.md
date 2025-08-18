@@ -110,9 +110,9 @@ Each workspace has its own `.memory/` directory:
 ## Architecture
 
 The system is intentionally minimal:
-- `agent.py` - Launcher script (~150 lines)
+- `agent.py` - Launcher script (~250 lines)
 - `.memory/` - Filesystem-based memory
-- Claude Code - Does all the actual work
+- Claude CLI - Does all the actual work
 
 ## Sub-Agent Communication
 
@@ -140,7 +140,7 @@ See the `examples/` directory for sample objectives:
 ## Requirements
 
 - Python 3.7+
-- Claude Code CLI (`claude-code` command)
+- Claude CLI (`claude` command)
 - Git (for memory versioning)
 
 ## Advanced Usage
