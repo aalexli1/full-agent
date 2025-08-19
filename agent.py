@@ -18,7 +18,8 @@ def ensure_memory_structure(workspace_dir):
         f"{workspace_dir}/.memory/core",
         f"{workspace_dir}/.memory/learned", 
         f"{workspace_dir}/.memory/current",
-        f"{workspace_dir}/.memory/handoffs"
+        f"{workspace_dir}/.memory/handoffs",
+        f"{workspace_dir}/.memory/archive"  # For context rotation
     ]
     for dir_path in memory_dirs:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
@@ -250,6 +251,47 @@ Regularly update BOTH:
 - {workspace_dir}/.memory/learned/patterns.md - Discovered patterns
 - {workspace_dir}/.memory/learned/decisions.md - Key decisions and rationale
 
+## Context Management (CRITICAL for long tasks)
+
+Monitor your context usage constantly. When approaching limits:
+
+### Early Warning Signs:
+- Reading many large files
+- Multiple rounds of delegation
+- Long handoff summaries
+- Extended conversation history
+
+### Context Preservation Strategies:
+
+1. **Checkpoint & Exit** (when context >70% full):
+   - Write detailed state to {workspace_dir}/.memory/current/checkpoint.md
+   - Update progress.md with exact status
+   - Write "NEEDS_RESUME" to {workspace_dir}/.memory/current/status.txt
+   - Exit cleanly - the launcher will resume with fresh context
+
+2. **Aggressive Summarization**:
+   - After reading any file, immediately summarize key points to {workspace_dir}/.memory/learned/summaries.md
+   - Replace file contents in memory with 2-3 line summary
+   - Never keep full file contents after processing
+
+3. **Preemptive Delegation** (for large objectives):
+   - If objective seems complex, IMMEDIATELY spawn agent-organizer
+   - Break into 5-10 smaller independent tasks
+   - Spawn parallel agents for each
+   - Only track completion status, not details
+
+4. **Context Rotation**:
+   - Archive completed task details to {workspace_dir}/.memory/archive/
+   - Keep only task names and outcomes in active memory
+   - Reference archives by summary only
+
+### Emergency Context Recovery:
+If you feel context pressure:
+1. STOP adding new information
+2. Write current state to checkpoint
+3. Spawn a sub-agent to continue with: "Continue from checkpoint in {workspace_dir}/.memory/current/checkpoint.md"
+4. Exit immediately
+
 ## Error Handling & Recovery
 
 When errors occur:
@@ -298,8 +340,20 @@ def get_agent_root():
     """Get the root directory where agent.py lives"""
     return Path(__file__).parent.absolute()
 
-def run_agent(objective, workspace=None, resume=False, timeout=None):
+def check_needs_resume(workspace_dir):
+    """Check if agent needs to resume from checkpoint"""
+    status_file = workspace_dir / ".memory" / "current" / "status.txt"
+    if status_file.exists():
+        with open(status_file) as f:
+            status = f.read().strip()
+            if status == "NEEDS_RESUME":
+                return True
+    return False
+
+def run_agent(objective, workspace=None, resume=False, timeout=None, max_restarts=5):
     """Launch Claude Code with the objective"""
+    restart_count = 0
+    
     # Determine workspace directory
     if workspace:
         # If absolute path given, use it; otherwise relative to current directory
@@ -341,45 +395,71 @@ def run_agent(objective, workspace=None, resume=False, timeout=None):
     # Ensure memory structure exists
     ensure_memory_structure(workspace_dir)
     
-    # Generate master prompt
-    prompt = create_master_prompt(objective, str(workspace_dir), resume)
-    
-    # Build command - run in workspace directory
-    # --print for non-interactive mode
-    # --dangerously-skip-permissions to allow all operations without prompting
-    cmd = ["claude", "--print", "--dangerously-skip-permissions", prompt]
-    
-    print(f"🚀 Launching autonomous agent...")
-    print(f"📍 Objective: {objective[:100]}..." if len(objective) > 100 else f"📍 Objective: {objective}")
-    print(f"📂 Workspace: {workspace_dir}")
-    print(f"💾 Memory at: {workspace_dir}/.memory/")
-    print("-" * 50)
-    
-    try:
-        # Run Claude Code
-        result = subprocess.run(cmd, timeout=timeout)
+    # Main execution loop with auto-restart for context management
+    while restart_count < max_restarts:
+        # Clear status file if starting fresh
+        if restart_count > 0:
+            status_file = workspace_dir / ".memory" / "current" / "status.txt"
+            if status_file.exists():
+                status_file.unlink()
+            resume = True  # Force resume mode for restarts
+            print(f"\n🔄 Restart {restart_count}/{max_restarts} - Resuming from checkpoint...")
         
-        if result.returncode == 0:
-            print("\n✅ Agent completed successfully")
+        # Generate master prompt
+        prompt = create_master_prompt(objective, str(workspace_dir), resume)
+        
+        # Build command - run in workspace directory
+        # --print for non-interactive mode
+        # --dangerously-skip-permissions to allow all operations without prompting
+        cmd = ["claude", "--print", "--dangerously-skip-permissions", prompt]
+        
+        if restart_count == 0:
+            print(f"🚀 Launching autonomous agent...")
+            print(f"📍 Objective: {objective[:100]}..." if len(objective) > 100 else f"📍 Objective: {objective}")
+            print(f"📂 Workspace: {workspace_dir}")
+            print(f"💾 Memory at: {workspace_dir}/.memory/")
+            print(f"🔄 Auto-restart enabled (max {max_restarts} restarts)")
+            print("-" * 50)
+        
+        try:
+            # Run Claude Code
+            result = subprocess.run(cmd, timeout=timeout)
             
-            # Check if complete
-            complete_path = workspace_dir / ".memory" / "current" / "complete.md"
-            if complete_path.exists():
-                print("📄 Reading completion report...")
-                with open(complete_path) as f:
-                    print(f.read())
-        else:
-            print(f"\n⚠️ Agent exited with code {result.returncode}")
-            
-    except subprocess.TimeoutExpired:
-        print(f"\n⏱️ Agent timeout after {timeout} seconds")
-        print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
-    except KeyboardInterrupt:
-        print("\n⚠️ Agent interrupted")
-        print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        return 1
+            if result.returncode == 0:
+                # Check if agent needs to resume (context overflow)
+                if check_needs_resume(workspace_dir):
+                    restart_count += 1
+                    print("\n💾 Agent checkpoint detected - context preservation restart...")
+                    continue
+                
+                print("\n✅ Agent completed successfully")
+                
+                # Check if complete
+                complete_path = workspace_dir / ".memory" / "current" / "complete.md"
+                if complete_path.exists():
+                    print("📄 Reading completion report...")
+                    with open(complete_path) as f:
+                        print(f.read())
+                break  # Exit the restart loop
+            else:
+                print(f"\n⚠️ Agent exited with code {result.returncode}")
+                break
+                
+        except subprocess.TimeoutExpired:
+            print(f"\n⏱️ Agent timeout after {timeout} seconds")
+            print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
+            break
+        except KeyboardInterrupt:
+            print("\n⚠️ Agent interrupted")
+            print(f"💾 State saved to {workspace_dir}/.memory/ - use --resume to continue")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            return 1
+    
+    if restart_count >= max_restarts:
+        print(f"\n⚠️ Maximum restarts ({max_restarts}) reached. Task may be too complex.")
+        print(f"💡 Consider breaking it into smaller objectives.")
     
     return 0
 
