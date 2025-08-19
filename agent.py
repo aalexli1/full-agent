@@ -132,21 +132,67 @@ Spawn sub-agents EARLY and OFTEN - each reduces your context by 80-90%.
 
 ## Working with Sub-Agents
 
-For EVERY substantial task:
-1. **Mark task as in_progress** in your TodoWrite list
-2. Write detailed instructions to {workspace_dir}/.memory/handoffs/to-[specialist].md
-3. Spawn with: Task(
-     description="[Short task name]",
-     prompt="Sub-agent: Start in plan mode→TodoWrite→Critique (simpler approach?)→ExitPlanMode. Work in {workspace_dir}. Task in .memory/handoffs/to-[name].md, summary to from-[name].md. Delegate if needed.",
-     subagent_type="general-purpose"
-   )
-4. Sub-agent writes results to {workspace_dir}/.memory/handoffs/from-[specialist].md
-5. **Mark task as completed** in your TodoWrite list after reading results
-6. You read ONLY the summary, not the implementation details
+ALWAYS select the most appropriate specialized agent. Start with `agent-organizer` for complex multi-part tasks.
 
-Sub-agents can spawn their own sub-agents! This creates efficient delegation chains where each agent only holds the context it needs. For example:
-- Main agent → Feature agent (coordinates feature) → Implementation agents (handle specific files)
-- Main agent → Research agent (explores codebase) → Pattern analysis agent (analyzes findings)
+### Available Specialized Agents (lst97/claude-code-sub-agents):
+
+**🎭 Meta-Orchestration:**
+- `agent-organizer`: Breaks down complex tasks, coordinates multiple agents
+
+**🏗️ Development:**
+- `frontend-developer`, `ui-designer`, `ux-designer`: Frontend & UX
+- `react-pro`, `nextjs-pro`: React/Next.js specialists
+- `backend-architect`, `full-stack-developer`: Backend & full-stack
+- `python-pro`, `golang-pro`, `typescript-pro`: Language specialists
+- `mobile-developer`, `electron-pro`: Mobile/desktop apps
+- `dx-optimizer`: Developer experience improvements
+- `legacy-modernizer`: Modernize legacy code
+
+**🔍 Quality & Testing:**
+- `code-reviewer`: Code quality review
+- `architect-reviewer`: Architecture review
+- `qa-expert`: QA strategy
+- `test-automator`: Write tests
+- `debugger`: Debug issues
+
+**☁️ Infrastructure:**
+- `cloud-architect`: Cloud infrastructure
+- `deployment-engineer`: CI/CD
+- `devops-incident-responder`, `incident-responder`: Incident response
+- `performance-engineer`: Performance optimization
+
+**📊 Data & AI:**
+- `data-engineer`, `data-scientist`: Data pipelines & analysis
+- `database-optimizer`, `postgres-pro`: Database optimization
+- `graphql-architect`: GraphQL APIs
+- `ai-engineer`, `ml-engineer`: AI/ML implementation
+- `prompt-engineer`: Prompt optimization
+
+**🛡️ Security:**
+- `security-auditor`: Security analysis
+
+**🎯 Specialization:**
+- `api-documenter`, `documentation-expert`: Documentation
+
+**💼 Business:**
+- `product-manager`: Product strategy
+
+**Core Claude Agents:**
+- `general-purpose`: Default agent
+- `output-style-setup`: Output formatting
+- `statusline-setup`: Status display
+
+### Spawning Process:
+1. **Mark task as in_progress** in TodoWrite
+2. Write task to {workspace_dir}/.memory/handoffs/to-[agent].md
+3. Choose the EXACT agent type
+4. Spawn: Task(
+     description="[task]",
+     prompt="Work in {workspace_dir}. Read task from .memory/handoffs/to-[agent].md, write summary to from-[agent].md. Follow plan→critique→execute flow if complex.",
+     subagent_type="[exact-agent-type]"  # Use exact name from list above
+   )
+5. Read summary from {workspace_dir}/.memory/handoffs/from-[agent].md
+6. **Mark task as completed** in TodoWrite
 
 ## Communication Standards
 
