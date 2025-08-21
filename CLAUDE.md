@@ -15,6 +15,8 @@ Full Agent is a minimal system for running autonomous AI agents using Claude Cod
 - **Explicit over implicit** – Record decisions and patterns in memory for future sessions
 - **Fail loudly, recover gracefully** – Document blockers immediately, then try alternatives
 - **Small steps, clear traces** – Break work into memory-tracked stages that build on each other
+- **Match the codebase** – Study existing patterns, use current libraries, follow established style and best practices
+- **Protect the workspace** – Never delete memory files, always leave resumable state, test changes when possible
 
 ### Simplicity Means
 
@@ -29,21 +31,21 @@ Full Agent is a minimal system for running autonomous AI agents using Claude Cod
 
 When beginning any task:
 1. Read `core/objective.md` to understand the goal
-2. Check `current/progress.md` for existing work
-3. Review `learned/` for relevant patterns and decisions
-4. Break objective into 3-5 stages in `working-on.md`
+2. Check `current/progress.md` for what's been done (detailed history)
+3. Check `current/working-on.md` for planned tasks and next steps
+4. Review `learned/` for relevant patterns and `core/architecture.md` for design decisions
 
 ### 2. Memory Update Protocol
 
-**Update memory at these triggers:**
-- **Starting work**: Write current focus to `working-on.md`
-- **Every ~10 minutes**: Update `progress.md` with accomplishments
-- **Making decisions**: Document in `learned/decisions.md` with rationale
-- **Finding patterns**: Record in `learned/patterns.md` for reuse
+**Update memory to maintain resumable state:**
+- **Planning tasks**: Write future work and next steps to `working-on.md` (your todo list)
+- **Making progress**: Update `progress.md` with detailed record of what you did (your work log)
+- **Making architectural decisions**: Document in `core/architecture.md` with rationale
+- **Finding reusable patterns**: Record in `learned/patterns.md` (e.g., solved errors, code conventions)
 - **Getting stuck**: Write full context to `blocked.md`
 - **Completing objective**: Summary in `complete.md`
 
-### 3. When Stuck (Max 3 Attempts)
+### 3. When Stuck
 
 1. **Document** – Write error details to `blocked.md`:
    - What you tried
@@ -52,54 +54,25 @@ When beginning any task:
    
 2. **Check patterns** – Review `learned/patterns.md` for similar issues
 
-3. **Try alternative** – Different approach, document attempt
+3. **Try alternatives** – Different approaches, document attempts
 
-4. **Delegate if needed** – Create handoff in `.memory/handoffs/` for sub-agent
+4. **Delegate if needed** – Create handoff in `.memory/handoffs/` for sub-agent when stuck or need different expertise
 
 ## Implementation Flow
 
 ### Breaking Down Objectives
 
-Every objective should be decomposed into stages:
-
-```markdown
-## Stage 1: [Setup/Foundation]
-**Goal**: [Specific deliverable]
-**Success**: [Clear criteria]
-**Memory Updates**: [Which files to update]
-
-## Stage 2: [Core Implementation]
-**Goal**: [Building on Stage 1]
-**Success**: [Measurable outcome]
-**Memory Updates**: [Progress tracking]
-```
+Break complex objectives into clear stages that build on each other. Document your plan in `working-on.md` so you can track progress and resume if interrupted.
 
 ### Decision Framework
 
-When multiple solutions exist, prioritize:
-
-1. **Resumability** – Can another session continue from here?
-2. **Clarity** – Will the memory files explain what happened?
-3. **Simplicity** – Is this the least complex working solution?
-4. **Patterns** – Does this match existing patterns in `learned/`?
-5. **Reversibility** – Can we easily try something else if this fails?
+Choose solutions that are simple, resumable, and well-documented in memory.
 
 ## Sub-Agent Delegation
 
 ### When to Use Task Tool
 
-**Delegate when:**
-- Switching domains (e.g., backend → frontend)
-- Need specialized expertise
-- Current approach failed 3 times
-- Task requires different workspace
-- Exploring multiple solutions in parallel
-
-**Do it yourself when:**
-- Clear path forward exists
-- Following established patterns
-- Simple file operations
-- Within current domain/context
+Delegate to specialized agents when you need different expertise, are switching domains, or want to explore multiple approaches in parallel. Handle tasks yourself when you have a clear path forward.
 
 ### Handoff Protocol
 
@@ -113,22 +86,11 @@ When delegating:
 
 ### Before Marking Complete
 
-Verify:
-- ✓ Objective achieved (compare to `core/objective.md`)
-- ✓ Progress documented (check `current/progress.md`)
-- ✓ Decisions recorded (check `learned/decisions.md`)
-- ✓ Resumable state (sufficient context in memory)
-- ✓ Tests pass (if applicable to project)
-- ✓ No blocking errors in `blocked.md`
+Ensure the objective is achieved and the work is documented in memory for future sessions.
 
 ### Completion Report
 
-Write to `complete.md`:
-- What was accomplished
-- Key decisions made
-- Patterns discovered
-- Any remaining limitations
-- How to extend/improve
+Write a summary to `complete.md` explaining what was accomplished and any important context for future work.
 
 ## Key Commands
 
@@ -169,14 +131,13 @@ workspace/
 └── .memory/
     ├── core/                 # Unchanging facts
     │   ├── objective.md      # Original goal
-    │   └── architecture.md   # System design decisions
+    │   └── architecture.md   # System design and major architectural decisions
     ├── learned/              # Accumulated knowledge
-    │   ├── patterns.md       # Reusable solutions
-    │   ├── decisions.md      # Architectural choices
+    │   ├── patterns.md       # Reusable solutions and code conventions
     │   └── dependencies.md   # External requirements
     ├── current/              # Active state
-    │   ├── working-on.md     # Current focus
-    │   ├── progress.md       # Completed stages
+    │   ├── working-on.md     # Todo list and planned tasks
+    │   ├── progress.md       # Detailed work log and state
     │   ├── blocked.md        # Current blockers
     │   └── complete.md       # Final report
     └── handoffs/             # Sub-agent communication
