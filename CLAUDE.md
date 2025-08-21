@@ -118,6 +118,24 @@ python agent.py "Build feature X" --timeout 3600
 - Minimal dependencies: only `python-dotenv` for environment variables
 - No test framework configured - agent should determine testing approach per project
 
+### MCP Servers
+Agents can install MCP (Model Context Protocol) servers as needed to extend their capabilities:
+
+```bash
+# Install an MCP server (available to agent in all subdirectories)
+claude mcp add <server-name> npx -- -y <package-name>
+
+# Examples:
+claude mcp add sequential-thinking npx -- -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add filesystem npx -- -y @modelcontextprotocol/server-filesystem ~/full-agent-workspace
+claude mcp add puppeteer npx -- -y puppeteer-mcp-server
+
+# List installed MCP servers
+claude mcp list
+```
+
+MCP servers provide specialized tools like browser automation, filesystem access, and sequential thinking capabilities that agents can use autonomously.
+
 ## Architecture
 
 ### Core Components
