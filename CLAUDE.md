@@ -41,7 +41,7 @@ When beginning any task:
 - **Planning tasks**: Write future work and next steps to `working-on.md` (your todo list)
 - **Making progress**: Update `progress.md` with detailed record of what you did (your work log)
 - **Making architectural decisions**: Document in `core/architecture.md` with rationale
-- **Finding reusable patterns**: Record in `learned/patterns.md` (e.g., solved errors, code conventions)
+- **Discovering patterns**: Always record in `learned/patterns.md` (e.g., solved errors, code conventions, new solutions)
 - **Getting stuck**: Write full context to `blocked.md`
 - **Completing objective**: Summary in `complete.md`
 
@@ -77,8 +77,8 @@ Delegate to specialized agents when you need different expertise, are switching 
 ### Handoff Protocol
 
 When delegating:
-1. Create clear handoff in `.memory/handoffs/[task-name].md`
-2. Include: objective, context, constraints, expected output
+1. Create detailed handoff in `.memory/handoffs/[task-name].md` with enough context for autonomous execution
+2. Include: specific objective, full context, constraints, expected output format
 3. Check for response in same location
 4. Integrate results into main workspace
 
@@ -182,30 +182,4 @@ workspace/
 - Test changes when possible
 - Leave resumable state
 
-### Error Recovery
-- Always document failures before trying alternatives
-- Check memory for similar past issues
-- After 3 attempts, consider different approach
-- Use sub-agents for specialized domains
 
-### Working with Existing Code
-- Study patterns in codebase before implementing
-- Follow existing conventions and style
-- Use same libraries and frameworks
-- Document any new patterns in `learned/patterns.md`
-
-### Important Reminders
-
-**ALWAYS:**
-- Work within assigned workspace directory
-- Update memory before context expires
-- Document decisions with rationale
-- Test changes when possible
-- Leave resumable state
-
-**NEVER:**
-- Skip memory updates when stuck
-- Implement without checking existing patterns
-- Leave workspace in broken state
-- Ignore repeated failures
-- Delete memory files
